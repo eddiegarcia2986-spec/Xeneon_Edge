@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Scoreboard Pro 2026</title>
+    <style>
+        :root {
+            /* Default State */
+            --bg-r: 30; --bg-g: 30; --bg-b: 30;
+            --intensity: 0.2;
+            --bg-color: rgb(var(--bg-r), var(--bg-g), var(--bg-b));
+            
+            /* High-Contrast Defaults */
+            --text-main: #ffffff;
+            --text-sub: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(0, 0, 0, 0.4);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --accent: #00d2be;
+        }
+
+        body {
+            margin: 0; padding: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.3s ease;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        #widget-container { padding: 20px; max-width: 1000px; margin: auto; flex-grow: 1; width: 100%; box-sizing: border-box; }
+
+        /* --- Header --- */
+        header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 20px; padding-bottom: 12px; 
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .header-left h2 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1px;}
+        .attribution { font-size: 10px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+        .attribution img { height: 12px; opacity: 0.8; }
+
+        /* --- Scoreboard Grid --- */
+        #scoreboard {
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px;
+            min-height: 200px;
+        }
+
+        .game-link { text-decoration: none; color: inherit; display: block; outline: none; }
+        
+        .game-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 18px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+        .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+
+        .game-card.favorite-game { 
+            border: 2px solid var(--accent); 
+            background: linear-gradient(145deg, var(--card-bg), rgba(var(--bg-r), var(--bg-g), var(--bg-b), var(--intensity)));
+        }
+
+        .minimize-btn {
+            position: absolute; top: 12px; right: 12px;
+            background: var(--border-color); border: none;
+            color: var(--text-main); cursor: pointer; border-radius: 4px; padding: 2px 8px; font-weight: bold;
+            z-index: 10;
+        }
+
+        .game-status { font-size: 11px; color: var(--accent); font-weight: 900; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
+        .live-dot { height: 7px; width: 7px; background: var(--accent); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .team-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+        .team-info { display: flex; align-items: center; gap: 12px; }
+        .team-logo { width: 38px; height: 38px; object-fit: contain; }
+        .team-name { font-weight: 700; font-size: 1.15rem; }
+        .score { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+        /* --- Pagination --- */
+        .pagination-wrap {
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+            gap: 15px; margin-top: 30px; padding-bottom: 40px;
+        }
+        .nav-controls { display: flex; align-items: center; gap: 15px; }
+        .page-btn {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 8px 18px; border-radius: 8px;
+            cursor: pointer; font-weight: bold; transition: all 0.2s;
+        }
+        .page-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .page-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+        
+        .live-count-badge {
+            background: rgba(0, 210, 190, 0.1); color: var(--accent);
+            padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;
+            border: 1px solid var(--accent);
+        }
+
+        /* --- Settings Modal --- */
+        #settings-modal {
+            display: none; position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            z-index: 9999; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: var(--bg-color); border: 2px solid var(--border-color);
+            color: var(--text-main); padding: 25px; border-radius: 20px; width: 380px;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .setting-section { margin-bottom: 18px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+        label { display: block; font-size: 10px; text-transform: uppercase; color: var(--text-sub); margin-bottom: 6px; font-weight: bold; }
+        select { width: 100%; padding: 8px; margin-bottom: 6px; background: rgba(0,0,0,0.2); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; }
+
+        .preview-box { display: flex; align-items: center; gap: 15px; margin: 10px 0; padding: 10px; border-radius: 12px; background: rgba(0,0,0,0.2); }
+        #color-preview-circle { width: 45px; height: 45px; border-radius: 12px; border: 2px solid var(--text-main); }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button.action { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+
+        /* --- Minimized State --- */
+        .game-card.minimized { padding: 10px 18px; }
+        .game-card.minimized .team-logo { display: none; }
+        .game-card.minimized .team-row { margin: 4px 0; }
+        .game-card.minimized .score { font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+<div id="widget-container">
+    <header>
+        <div class="header-left">
+            <h2>NBA Scores</h2>
+            <div id="current-date" style="font-size: 13px; opacity: 0.7;">...</div>
+            <div class="attribution">
+                Powered by 
+                <a href="https://www.espn.com/nba/" target="_blank">
+                    <img src="https://a.espncdn.com/redesign/assets/img/logos/espn-404@2x.png" alt="ESPN">
+                </a>
+            </div>
+        </div>
+        <button class="page-btn" onclick="toggleSettings(true)">⚙ Settings</button>
+    </header>
+    
+    <div id="scoreboard"></div>
+
+    <div class="pagination-wrap">
+        <div id="live-counter-wrap"></div>
+        <div class="nav-controls">
+            <button id="prev-btn" class="page-btn" onclick="changePage(-1)">←</button>
+            <span id="page-info" style="font-weight: bold; min-width: 80px; text-align: center;">Page 1</span>
+            <button id="next-btn" class="page-btn" onclick="changePage(1)">→</button>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal">
+    <div class="modal-content">
+        <h3 style="margin:0 0 15px 0">Widget Settings</h3>
+        <div class="setting-section">
+            <label>Priority Teams</label>
+            <select id="fav-1" class="team-opt"></select>
+            <select id="fav-2" class="team-opt"></select>
+            <select id="fav-3" class="team-opt"></select>
+            <label style="display: flex; align-items: center; gap: 8px; text-transform: none; margin-top: 8px;">
+                <input type="checkbox" id="only-favs-check"> Only show priority teams
+            </label>
+        </div>
+        <div class="setting-section">
+            <label>Theme Customization</label>
+            <div class="preview-box">
+                <div id="color-preview-circle"></div>
+                <div style="flex:1">
+                    <input type="range" id="r-range" min="0" max="255" value="30" oninput="liveUpdate()" style="width:100%">
+                    <input type="range" id="g-range" min="0" max="255" value="30" oninput="liveUpdate()" style="width:100%">
+                    <input type="range" id="b-range" min="0" max="255" value="30" oninput="liveUpdate()" style="width:100%">
+                </div>
+            </div>
+            <label>Color Intensity</label>
+            <input type="range" id="intensity-range" min="0" max="100" value="20" oninput="liveUpdate()" style="width:100%">
+        </div>
+        <div class="btn-group">
+            <button class="action" style="background:rgba(255,255,255,0.1); color:white" onclick="toggleSettings(false)">Cancel</button>
+            <button class="action" style="background:var(--accent); color:black" onclick="saveSettings()">Save</button>
+        </div>
+        <button class="action" style="background:#ff4d4d; color:white; width:100%; margin-top:10px; border:none; border-radius:8px; padding:10px" onclick="restoreDefaults()">Restore Defaults</button>
+    </div>
+</div>
+
+<script>
+    const API = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
+    const GAMES_PER_PAGE = 3;
+    
+    let state = JSON.parse(localStorage.getItem('nba_v_pro_state')) || {
+        favs: ["", "", ""],
+        onlyFavs: false,
+        rgb: { r: 30, g: 30, b: 30 },
+        intensity: 0.2,
+        minimized: []
+    };
+
+    let currentPage = 1;
+    let cachedGames = [];
+    let liveCount = 0;
+
+    const TEAMS = ["ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DAL", "DEN", "DET", "GS", "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NO", "NYK", "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SA", "TOR", "UTAH", "WSH"];
+
+    function init() {
+        populateDropdowns();
+        applyVisuals(state.rgb.r, state.rgb.g, state.rgb.b, state.intensity);
+        refreshData();
+        setInterval(refreshData, 60000);
+    }
+
+    function applyVisuals(r, g, b, intensity) {
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const root = document.documentElement;
+        root.style.setProperty('--bg-r', r);
+        root.style.setProperty('--bg-g', g);
+        root.style.setProperty('--bg-b', b);
+        root.style.setProperty('--intensity', intensity);
+        
+        // Luminance logic to prevent unreadable text on bright colors
+        if (lum > 0.55) {
+            root.style.setProperty('--text-main', '#000000');
+            root.style.setProperty('--text-sub', 'rgba(0, 0, 0, 0.65)');
+            root.style.setProperty('--card-bg', 'rgba(255, 255, 255, 0.45)');
+            root.style.setProperty('--border-color', 'rgba(0, 0, 0, 0.2)');
+        } else {
+            root.style.setProperty('--text-main', '#ffffff');
+            root.style.setProperty('--text-sub', 'rgba(255, 255, 255, 0.7)');
+            root.style.setProperty('--card-bg', 'rgba(0, 0, 0, 0.35)');
+            root.style.setProperty('--border-color', 'rgba(255, 255, 255, 0.15)');
+        }
+    }
+
+    async function refreshData() {
+        try {
+            const res = await fetch(API);
+            const data = await res.json();
+            if (data.day) document.getElementById('current-date').innerText = new Date(data.day.date + "T12:00:00").toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            
+            let games = data.events || [];
+            liveCount = games.filter(g => g.status.type.state === 'in').length;
+
+            if (state.onlyFavs) {
+                games = games.filter(g => g.competitions[0].competitors.some(c => state.favs.includes(c.team.abbreviation)));
+            }
+
+            games.sort((a, b) => {
+                const getRank = (g) => {
+                    const isFav = g.competitions[0].competitors.some(c => state.favs.includes(c.team.abbreviation));
+                    const status = g.status.type.state;
+                    let score = isFav ? -100 : 0;
+                    if (status === 'in') score += 1;
+                    if (status === 'pre') score += 2;
+                    if (status === 'post') score += 3;
+                    return score;
+                };
+                return getRank(a) - getRank(b);
+            });
+
+            cachedGames = games;
+            renderPage();
+        } catch (e) { console.error("API Error:", e); }
+    }
+
+    function renderPage() {
+        const board = document.getElementById('scoreboard');
+        const totalPages = Math.ceil(cachedGames.length / GAMES_PER_PAGE) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * GAMES_PER_PAGE;
+        const pageItems = cachedGames.slice(start, start + GAMES_PER_PAGE);
+
+        document.getElementById('page-info').innerText = `Page ${currentPage} / ${totalPages}`;
+        document.getElementById('prev-btn').disabled = currentPage === 1;
+        document.getElementById('next-btn').disabled = currentPage === totalPages;
+        
+        const counterWrap = document.getElementById('live-counter-wrap');
+        counterWrap.innerHTML = liveCount > 0 ? `<div class="live-count-badge"><span class="live-dot"></span> ${liveCount} NBA GAMES LIVE</div>` : '';
+
+        board.innerHTML = pageItems.map(g => {
+            const comp = g.competitions[0];
+            const home = comp.competitors.find(c => c.homeAway === 'home');
+            const away = comp.competitors.find(c => c.homeAway === 'away');
+            const isFav = comp.competitors.some(c => state.favs.includes(c.team.abbreviation));
+            const isMin = state.minimized.includes(g.id);
+            const isInProgress = g.status.type.state === 'in';
+            const statusText = g.status.type.state === 'pre' ? 
+                new Date(g.date).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : 
+                g.status.type.shortDetail;
+
+            const espnLink = g.links.find(l => l.rel.includes('summary'))?.href || `https://www.espn.com/nba/game/_/gameId/${g.id}`;
+
+            return `
+                <a href="${espnLink}" target="_blank" class="game-link">
+                    <div class="game-card ${isFav ? 'favorite-game' : ''} ${isMin ? 'minimized' : ''}">
+                        <button class="minimize-btn" onclick="event.preventDefault(); toggleMin('${g.id}')">${isMin ? '⤢' : '⤡'}</button>
+                        <div class="game-status">
+                            ${isInProgress ? '<span class="live-dot"></span>' : ''}
+                            ${statusText}
+                        </div>
+                        <div class="team-row">
+                            <div class="team-info">
+                                <img src="https://a.espncdn.com/i/teamlogos/nba/500/${away.team.abbreviation}.png" class="team-logo">
+                                <span class="team-name">${away.team.abbreviation}</span>
+                            </div>
+                            <span class="score">${g.status.type.state === 'pre' ? '-' : away.score}</span>
+                        </div>
+                        <div class="team-row">
+                            <div class="team-info">
+                                <img src="https://a.espncdn.com/i/teamlogos/nba/500/${home.team.abbreviation}.png" class="team-logo">
+                                <span class="team-name">${home.team.abbreviation}</span>
+                            </div>
+                            <span class="score">${g.status.type.state === 'pre' ? '-' : home.score}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+
+    function changePage(delta) { currentPage += delta; renderPage(); }
+    function toggleMin(id) {
+        state.minimized = state.minimized.includes(id) ? state.minimized.filter(x => x !== id) : [...state.minimized, id];
+        localStorage.setItem('nba_v_pro_state', JSON.stringify(state));
+        renderPage();
+    }
+    function toggleSettings(show) { document.getElementById('settings-modal').style.display = show ? 'flex' : 'none'; }
+    function populateDropdowns() {
+        document.querySelectorAll('.team-opt').forEach((s, i) => {
+            s.innerHTML = `<option value="">None</option>` + TEAMS.sort().map(t => `<option value="${t}" ${state.favs[i] === t ? 'selected' : ''}>${t}</option>`).join('');
+        });
+        document.getElementById('only-favs-check').checked = state.onlyFavs;
+        document.getElementById('r-range').value = state.rgb.r;
+        document.getElementById('g-range').value = state.rgb.g;
+        document.getElementById('b-range').value = state.rgb.b;
+        document.getElementById('intensity-range').value = state.intensity * 100;
+        document.getElementById('color-preview-circle').style.backgroundColor = `rgb(${state.rgb.r},${state.rgb.g},${state.rgb.b})`;
+    }
+    function saveSettings() {
+        state.favs = [document.getElementById('fav-1').value, document.getElementById('fav-2').value, document.getElementById('fav-3').value];
+        state.onlyFavs = document.getElementById('only-favs-check').checked;
+        state.rgb = { r: parseInt(document.getElementById('r-range').value), g: parseInt(document.getElementById('g-range').value), b: parseInt(document.getElementById('b-range').value) };
+        state.intensity = document.getElementById('intensity-range').value / 100;
+        localStorage.setItem('nba_v_pro_state', JSON.stringify(state));
+        currentPage = 1;
+        toggleSettings(false);
+        refreshData();
+    }
+    function liveUpdate() {
+        const r = document.getElementById('r-range').value;
+        const g = document.getElementById('g-range').value;
+        const b = document.getElementById('b-range').value;
+        document.getElementById('color-preview-circle').style.backgroundColor = `rgb(${r},${g},${b})`;
+        applyVisuals(r, g, b, document.getElementById('intensity-range').value / 100);
+    }
+    function restoreDefaults() {
+        localStorage.removeItem('nba_v_pro_state');
+        location.reload();
+    }
+    init();
+</script>
+</body>
+</html>
