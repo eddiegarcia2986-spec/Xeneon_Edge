@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xeneon Edge Clock Widget Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Default Theme Variables */
+            --primary: #e0e0e0;
+            --secondary: #4a4a4a;
+            --highlight: #00d2be;
+            --bg-color: #1e1e1e;
+            --bg-opacity: 1;
+            
+            --font-main: 'Fira Sans Condensed', sans-serif;
+            --shadow: 0 8px 16px rgba(0,0,0,0.4);
+            --card-radius: 12px;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-user-drag: none; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: rgba(30, 30, 30, var(--bg-opacity));
+            color: var(--primary);
+            font-family: var(--font-main);
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        /* --- Layout --- */
+        #app-container {
+            display: flex;
+            width: 100%; height: 100%;
+            padding: 2vmin; gap: 2vmin;
+        }
+
+        .section {
+            background: var(--secondary);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow);
+            position: relative;
+            backdrop-filter: blur(12px);
+            display: flex; flex-direction: column;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* --- CLOCK SECTION --- */
+        #clock-section {
+            flex: 1.6;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #time-display {
+            font-size: 24vmin;
+            font-weight: 700;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            display: flex; align-items: baseline; gap: 1vmin;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #ampm {
+            font-size: 0.25em; font-weight: 600;
+            color: var(--highlight); text-transform: uppercase;
+        }
+
+        #date-display {
+            font-size: 5vmin; margin-top: 2vmin;
+            opacity: 0.8; font-weight: 300; letter-spacing: 1px;
+        }
+
+        /* --- TOOLS SECTION --- */
+        #tools-section {
+            flex: 1;
+            display: flex; flex-direction: column;
+            gap: 2vmin;
+            background: transparent; box-shadow: none; border: none; backdrop-filter: none;
+        }
+
+        .tool-card {
+            background: var(--secondary);
+            flex: 1;
+            border-radius: var(--card-radius);
+            padding: 1.5vmin;
+            display: flex; flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--shadow);
+        }
+
+        .tool-header {
+            font-size: 2.2vmin;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--highlight);
+            font-weight: 700;
+            margin-bottom: 1vmin;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        /* --- Common Controls (Stepper) --- */
+        .stepper-ui {
+            display: flex; align-items: center; justify-content: center;
+            height: 100%; gap: 1vmin;
+        }
+
+        .time-col {
+            display: flex; flex-direction: column; align-items: center;
+            width: 7vmin;
+        }
+
+        .val-display {
+            font-size: 5.5vmin; font-weight: 600;
+            margin: 0.5vmin 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .step-btn {
+            background: rgba(0,0,0,0.2);
+            border: none; color: var(--primary);
+            width: 100%; height: 3.5vmin;
+            border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5vmin; transition: background 0.1s;
+        }
+        .step-btn:active { background: var(--highlight); color: #000; }
+        .step-btn:hover { background: rgba(255,255,255,0.1); }
+
+        .separator { font-size: 4vmin; opacity: 0.5; margin-top: -1vmin; }
+
+        /* Timer Specifics */
+        .timer-actions {
+            display: flex; flex-direction: column; gap: 1vmin; margin-left: 2vmin;
+        }
+        .circle-btn {
+            width: 5vmin; height: 5vmin;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            background: transparent; color: var(--primary);
+            font-size: 2vmin; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .circle-btn.active { border-color: var(--highlight); background: var(--highlight); color: #000; }
+        .circle-btn:active { transform: scale(0.95); }
+
+        /* --- Alarm UI --- */
+        /* View 1: List */
+        #alarm-list-view {
+            display: flex; flex-direction: column; height: 100%;
+            transition: transform 0.3s ease;
+        }
+        
+        #alarm-items {
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 0.8vmin;
+            padding-right: 4px;
+        }
+        
+        #alarm-items::-webkit-scrollbar { width: 4px; }
+        #alarm-items::-webkit-scrollbar-thumb { background: var(--highlight); border-radius: 2px; }
+
+        .alarm-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 1vmin 1.5vmin; border-radius: 8px;
+            border-left: 3px solid transparent;
+        }
+        .alarm-row.active { border-left-color: var(--highlight); background: rgba(255,255,255,0.05); }
+
+        .ar-time { font-size: 3vmin; font-weight: 700; line-height: 1; }
+        .ar-label { font-size: 1.2vmin; opacity: 0.6; text-transform: uppercase; margin-top: 2px; }
+        
+        .ar-controls { display: flex; gap: 1vmin; }
+        .text-btn { font-size: 1.5vmin; background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--primary); padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+        .text-btn.on { color: var(--highlight); border-color: var(--highlight); font-weight: bold; }
+
+        .add-fab {
+            position: absolute; bottom: 1.5vmin; right: 1.5vmin;
+            background: var(--highlight); color: #000;
+            width: 4vmin; height: 4vmin; border-radius: 50%;
+            border: none; font-size: 2.5vmin; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4); cursor: pointer;
+            z-index: 10;
+        }
+        .add-fab:active { transform: scale(0.9); }
+
+        /* View 2: Editor (Contextual) */
+        #alarm-editor-view {
+            position: absolute; inset: 0;
+            background: var(--secondary);
+            display: flex; flex-direction: column;
+            transform: translateY(110%); /* Hidden by default */
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 1.5vmin;
+            z-index: 20;
+        }
+        #alarm-editor-view.visible { transform: translateY(0); }
+
+        .editor-footer {
+            margin-top: auto;
+            display: flex; gap: 1vmin;
+        }
+        .full-btn {
+            flex: 1; padding: 1vmin;
+            border: none; border-radius: 6px;
+            font-weight: bold; font-size: 1.8vmin;
+            cursor: pointer; text-transform: uppercase;
+        }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: var(--primary); }
+        .btn-save { background: var(--highlight); color: #000; }
+
+        .label-cycler {
+            margin-top: 1vmin; background: rgba(0,0,0,0.2); 
+            padding: 0.8vmin; border-radius: 6px; text-align: center;
+            font-size: 1.8vmin; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* --- Settings Icon (Top Right) --- */
+        #settings-trigger {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.3); 
+            color: var(--primary);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 40px; height: 40px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 100;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
+        }
+        #settings-trigger:hover { background: var(--highlight); color: #000; border-color: var(--highlight); }
+        #settings-trigger svg { width: 20px; height: 20px; }
+
+        /* --- Settings Modal --- */
+        #settings-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); z-index: 200;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background: #222; width: 500px; max-width: 90%;
+            border-radius: 12px; padding: 25px;
+            border: 1px solid #444; color: #fff;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .modal-title { margin: 0; font-size: 1.2rem; color: var(--highlight); }
+        
+        .theme-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .theme-ball { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; overflow: hidden; }
+        .theme-ball.selected { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px var(--highlight); }
+        .slice { width: 33.33%; height: 100%; float: left; }
+        
+        .setting-row { margin-bottom: 15px; }
+        .setting-row label { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; text-transform: uppercase; }
+        select, input[type=range] { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #fff; border-radius: 4px; }
+        
+        /* --- Responsive Logic --- */
+        @media (orientation: landscape) {
+            #app-container { flex-direction: row; }
+            #tools-section { max-width: 35%; }
+        }
+        @media (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #time-display { font-size: 18vmin; }
+            #tools-section { flex: 1; max-width: 100%; }
+            .tool-header { display: none; } /* Save vertical space */
+            .tool-card { padding: 1vmin; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="settings-trigger" onclick="openSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</div>
+
+<div id="app-container">
+    <div id="clock-section" class="section">
+        <div id="time-display">
+            <span id="t-digits">00:00</span>
+            <span id="ampm">AM</span>
+        </div>
+        <div id="date-display">...</div>
+    </div>
+
+    <div id="tools-section">
+        
+        <div class="tool-card">
+            <div class="tool-header">Timer</div>
+            <div class="stepper-ui">
+                <div class="time-col">
+                    <button class="step-btn" onclick="adjTimer('h',1)">▲</button>
+                    <div id="tm-h" class="val-display">00</div>
+                    <button class="step-btn" onclick="adjTimer('h',-1)">▼</button>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-col">
+                    <button class="step-btn" onclick="adjTimer('m',1)">▲</button>
+                    <div id="tm-m" class="val-display">00</div>
+                    <button class="step-btn" onclick="adjTimer('m',-1)">▼</button>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-col">
+                    <button class="step-btn" onclick="adjTimer('s',1)">▲</button>
+                    <div id="tm-s" class="val-display">00</div>
+                    <button class="step-btn" onclick="adjTimer('s',-1)">▼</button>
+                </div>
+                <div class="timer-actions">
+                    <button id="btn-start" class="circle-btn" onclick="toggleTimer()">▶</button>
+                    <button class="circle-btn" onclick="resetTimer()">↺</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-header">Alarms</div>
+            
+            <div id="alarm-list-view">
+                <div id="alarm-items"></div>
+                <button class="add-fab" onclick="showAlarmEditor()">+</button>
+            </div>
+
+            <div id="alarm-editor-view">
+                <div style="font-size:1.5vmin; text-align:center; opacity:0.7; margin-bottom:1vmin">NEW ALARM</div>
+                
+                <div class="stepper-ui" style="height: auto; margin-bottom: 2vmin;">
+                    <div class="time-col">
+                        <button class="step-btn" onclick="adjAlarm('h', 1)">▲</button>
+                        <div id="new-h" class="val-display">08</div>
+                        <button class="step-btn" onclick="adjAlarm('h', -1)">▼</button>
+                    </div>
+                    <div class="separator">:</div>
+                    <div class="time-col">
+                        <button class="step-btn" onclick="adjAlarm('m', 1)">▲</button>
+                        <div id="new-m" class="val-display">00</div>
+                        <button class="step-btn" onclick="adjAlarm('m', -1)">▼</button>
+                    </div>
+                    <div class="time-col" id="new-ampm-box">
+                        <button class="step-btn" style="height:100%; font-weight:bold" onclick="toggleNewAmpm()" id="new-ampm">AM</button>
+                    </div>
+                </div>
+
+                <div class="label-cycler" id="new-label" onclick="cycleLabel()">Label: Work</div>
+
+                <div class="editor-footer">
+                    <button class="full-btn btn-cancel" onclick="hideAlarmEditor()">Cancel</button>
+                    <button class="full-btn btn-save" onclick="saveNewAlarm()">Save</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="settings-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Settings</h3>
+            <button style="background:none; border:none; color:#fff; cursor:pointer" onclick="closeSettings()">✕</button>
+        </div>
+        
+        <div class="setting-row">
+            <label>Theme</label>
+            <div class="theme-grid" id="theme-grid"></div>
+        </div>
+        
+        <div class="setting-row">
+            <label>Opacity</label>
+            <input type="range" id="op-range" min="0" max="100" oninput="updSettings()">
+        </div>
+
+        <div class="setting-row">
+            <label>Time Format</label>
+            <select id="fmt-time" onchange="updSettings()">
+                <option value="12">12-Hour</option>
+                <option value="24">24-Hour</option>
+            </select>
+        </div>
+        
+        <div class="setting-row">
+            <label>Date Format</label>
+            <select id="fmt-date" onchange="updSettings()">
+                <option value="full">Weekday | Month Day</option>
+                <option value="short">Mon, Jan 1</option>
+                <option value="num">MM/DD/YYYY</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- STATE & CONFIG ---
+    const themes = [
+        { name: "Gunmetal", p: "#e0e0e0", s: "#4a4a4a", h: "#00d2be", bg: "#1e1e1e" },
+        { name: "Red", p: "#fff", s: "#4a1a1a", h: "#ff4d4d", bg: "#1a0505" },
+        { name: "Blue", p: "#e0f7fa", s: "#0d47a1", h: "#40c4ff", bg: "#001020" },
+        { name: "Green", p: "#e8f5e9", s: "#1b5e20", h: "#69f0ae", bg: "#051a05" },
+        { name: "Orange", p: "#fff3e0", s: "#e65100", h: "#ffab40", bg: "#201000" },
+        { name: "Purple", p: "#f3e5f5", s: "#4a148c", h: "#e040fb", bg: "#150520" },
+        { name: "Mono", p: "#fff", s: "#333", h: "#888", bg: "#000" },
+        { name: "Gold", p: "#fff8e1", s: "#5d4037", h: "#ffd700", bg: "#1e1e1e" },
+        { name: "Neon", p: "#fff", s: "#222", h: "#00ff00", bg: "#111" },
+        { name: "Cyber", p: "#0ff", s: "#003333", h: "#f0f", bg: "#000510" },
+        { name: "Slate", p: "#eceff1", s: "#37474f", h: "#90a4ae", bg: "#263238" },
+        { name: "Mint", p: "#e0f2f1", s: "#004d40", h: "#1de9b6", bg: "#00251a" },
+        { name: "Pink", p: "#fce4ec", s: "#880e4f", h: "#ff4081", bg: "#2a0010" },
+        { name: "OLED", p: "#ddd", s: "#111", h: "#fff", bg: "#000000" },
+        { name: "Navy", p: "#e3f2fd", s: "#1a237e", h: "#536dfe", bg: "#0d1b2a" }
+    ];
+
+    let state = {
+        themeIdx: 0,
+        opacity: 100,
+        timeFmt: "12",
+        dateFmt: "full",
+        alarms: []
+    };
+
+    // Timer Vars
+    let tTime = { h:0, m:0, s:0 };
+    let tInterval = null;
+    let tRunning = false;
+
+    // Alarm Editor Vars
+    let editAlarm = { h:8, m:0, ampm:'AM', labelIdx:0 };
+    const labels = ["Work", "Gaming", "Nap", "Meeting", "Gym", "Wake Up"];
+
+    // --- INIT ---
+    function init() {
+        const saved = localStorage.getItem('xeneon_clock_v2');
+        if(saved) state = JSON.parse(saved);
+        
+        setupThemes();
+        applyState();
+        renderAlarms();
+        
+        setInterval(tick, 1000);
+        tick();
+    }
+
+    function tick() {
+        const now = new Date();
+        
+        // Clock
+        let h = now.getHours();
+        const m = String(now.getMinutes()).padStart(2,'0');
+        let am = "";
+        
+        if(state.timeFmt === "12") {
+            am = h >= 12 ? "PM" : "AM";
+            h = h % 12 || 12;
+        }
+        document.getElementById('t-digits').innerText = `${String(h).padStart(2,'0')}:${m}`;
+        document.getElementById('ampm').innerText = am;
+        
+        // Date
+        const opts = state.dateFmt === 'full' ? {weekday:'long', month:'long', day:'numeric'} : 
+                     state.dateFmt === 'short' ? {weekday:'short', month:'short', day:'numeric'} : 
+                     {month:'numeric', day:'numeric', year:'numeric'};
+        let ds = now.toLocaleDateString('en-US', opts);
+        if(state.dateFmt === 'full') ds = ds.replace(',', ' |');
+        document.getElementById('date-display').innerText = ds;
+
+        // Check Alarms
+        if(now.getSeconds() === 0) {
+            state.alarms.forEach(a => {
+                if(a.active && a.h === now.getHours() && a.m === now.getMinutes()) {
+                    // Visual Flash
+                    document.body.style.backgroundColor = 'var(--highlight)';
+                    setTimeout(() => applyState(), 1000);
+                    alert(`ALARM: ${a.label}`);
+                    a.active = false;
+                    renderAlarms();
+                }
+            });
+        }
+    }
+
+    // --- TIMER ---
+    function adjTimer(u, d) {
+        if(tRunning) return;
+        if(u==='h') tTime.h = Math.max(0, Math.min(99, tTime.h + d));
+        if(u==='m') tTime.m = Math.max(0, Math.min(59, tTime.m + d));
+        if(u==='s') tTime.s = Math.max(0, Math.min(59, tTime.s + d));
+        drawTimer();
+    }
+
+    function drawTimer() {
+        ['h','m','s'].forEach(k => document.getElementById(`tm-${k}`).innerText = String(tTime[k]).padStart(2,'0'));
+    }
+
+    function toggleTimer() {
+        const btn = document.getElementById('btn-start');
+        if(tRunning) {
+            clearInterval(tInterval);
+            tRunning = false;
+            btn.innerText = "▶";
+            btn.classList.remove('active');
+        } else {
+            if(tTime.h===0 && tTime.m===0 && tTime.s===0) return;
+            tRunning = true;
+            btn.innerText = "||";
+            btn.classList.add('active');
+            tInterval = setInterval(() => {
+                if(tTime.s>0) tTime.s--;
+                else if(tTime.m>0) { tTime.m--; tTime.s=59; }
+                else if(tTime.h>0) { tTime.h--; tTime.m=59; tTime.s=59; }
+                else { toggleTimer(); alert("Timer Done!"); }
+                drawTimer();
+            }, 1000);
+        }
+    }
+
+    function resetTimer() {
+        if(tRunning) toggleTimer();
+        tTime = { h:0, m:0, s:0 };
+        drawTimer();
+    }
+
+    // --- ALARM EDITOR (CONTEXTUAL) ---
+    function showAlarmEditor() {
+        // Reset editor defaults
+        const now = new Date();
+        editAlarm.h = now.getHours();
+        editAlarm.m = now.getMinutes();
+        editAlarm.labelIdx = 0;
+        
+        drawEditor();
+        document.getElementById('alarm-editor-view').classList.add('visible');
+    }
+
+    function hideAlarmEditor() {
+        document.getElementById('alarm-editor-view').classList.remove('visible');
+    }
+
+    function adjAlarm(u, d) {
+        if(u==='h') {
+            editAlarm.h += d;
+            if(editAlarm.h > 23) editAlarm.h = 0;
+            if(editAlarm.h < 0) editAlarm.h = 23;
+        }
+        if(u==='m') {
+            editAlarm.m += d * 5; // 5 min increments for speed
+            if(editAlarm.m > 55) editAlarm.m = 0;
+            if(editAlarm.m < 0) editAlarm.m = 55;
+        }
+        drawEditor();
+    }
+
+    function toggleNewAmpm() {
+        // Simple toggle by adding/subtracting 12 hours
+        if(editAlarm.h < 12) editAlarm.h += 12;
+        else editAlarm.h -= 12;
+        drawEditor();
+    }
+
+    function cycleLabel() {
+        editAlarm.labelIdx = (editAlarm.labelIdx + 1) % labels.length;
+        drawEditor();
+    }
+
+    function drawEditor() {
+        let displayH = editAlarm.h;
+        let ampm = "";
+        
+        const is12 = state.timeFmt === "12";
+        document.getElementById('new-ampm-box').style.display = is12 ? 'flex' : 'none';
+
+        if(is12) {
+            ampm = displayH >= 12 ? "PM" : "AM";
+            displayH = displayH % 12 || 12;
+        }
+
+        document.getElementById('new-h').innerText = String(displayH).padStart(2,'0');
+        document.getElementById('new-m').innerText = String(editAlarm.m).padStart(2,'0');
+        document.getElementById('new-ampm').innerText = ampm;
+        document.getElementById('new-label').innerText = "Label: " + labels[editAlarm.labelIdx];
+    }
+
+    function saveNewAlarm() {
+        state.alarms.push({
+            h: editAlarm.h,
+            m: editAlarm.m,
+            label: labels[editAlarm.labelIdx],
+            active: true
+        });
+        saveState();
+        renderAlarms();
+        hideAlarmEditor();
+    }
+
+    // --- ALARM LIST ---
+    function renderAlarms() {
+        const list = document.getElementById('alarm-items');
+        list.innerHTML = '';
+        
+        if(state.alarms.length === 0) {
+            list.innerHTML = `<div style="text-align:center; opacity:0.3; margin-top:20px; font-size:1.5vmin">NO ALARMS SET</div>`;
+            return;
+        }
+
+        state.alarms.forEach((a, i) => {
+            let dH = a.h;
+            let suf = "";
+            if(state.timeFmt === "12") {
+                suf = dH >= 12 ? " PM" : " AM";
+                dH = dH % 12 || 12;
+            }
+            
+            const row = document.createElement('div');
+            row.className = `alarm-row ${a.active?'active':''}`;
+            row.innerHTML = `
+                <div>
+                    <div class="ar-time">${String(dH).padStart(2,'0')}:${String(a.m).padStart(2,'0')}${suf}</div>
+                    <div class="ar-label">${a.label}</div>
+                </div>
+                <div class="ar-controls">
+                    <button class="text-btn ${a.active?'on':''}" onclick="togAlarm(${i})">${a.active?'ON':'OFF'}</button>
+                    <button class="text-btn" onclick="delAlarm(${i})">✕</button>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    window.togAlarm = (i) => { state.alarms[i].active = !state.alarms[i].active; saveState(); renderAlarms(); };
+    window.delAlarm = (i) => { state.alarms.splice(i,1); saveState(); renderAlarms(); };
+
+    // --- SETTINGS ---
+    function openSettings() { 
+        document.getElementById('settings-modal').style.display = 'flex';
+        document.getElementById('op-range').value = state.opacity;
+        document.getElementById('fmt-time').value = state.timeFmt;
+        document.getElementById('fmt-date').value = state.dateFmt;
+    }
+    function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+    
+    function updSettings() {
+        state.opacity = document.getElementById('op-range').value;
+        state.timeFmt = document.getElementById('fmt-time').value;
+        state.dateFmt = document.getElementById('fmt-date').value;
+        applyState();
+        tick(); // instant update
+        drawEditor(); // update editor format if open
+        renderAlarms(); // update list format
+    }
+
+    function setupThemes() {
+        const grid = document.getElementById('theme-grid');
+        themes.forEach((t, i) => {
+            const b = document.createElement('div');
+            b.className = `theme-ball ${i===state.themeIdx ? 'selected':''}`;
+            b.innerHTML = `<div class="slice" style="background:${t.p}"></div><div class="slice" style="background:${t.s}"></div><div class="slice" style="background:${t.h}"></div>`;
+            b.onclick = () => { state.themeIdx = i; setupThemes(); applyState(); };
+            grid.appendChild(b);
+        });
+    }
+
+    function applyState() {
+        const t = themes[state.themeIdx];
+        const r = document.documentElement.style;
+        r.setProperty('--primary', t.p);
+        r.setProperty('--secondary', t.s);
+        r.setProperty('--highlight', t.h);
+        r.setProperty('--bg-color', t.bg);
+        
+        const rgb = hexToRgb(t.bg);
+        document.body.style.backgroundColor = `rgba(${rgb.r},${rgb.g},${rgb.b},${state.opacity/100})`;
+        saveState();
+    }
+
+    function saveState() { localStorage.setItem('xeneon_clock_v2', JSON.stringify(state)); }
+    function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        return {r,g,b};
+    }
+
+    init();
+</script>
+</body>
+</html>
