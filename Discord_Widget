@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5865F2; --secondary: #2b2d31; --highlight: #00d2be;
+            --bg-opacity: 0.9; --text-main: #ffffff; --font-primary: 'Fira Sans Condensed', sans-serif;
+        }
+
+        body {
+            margin: 0; padding: 0; background: transparent; color: var(--text-main);
+            font-family: var(--font-primary); overflow: hidden; height: 100vh; width: 100vw;
+        }
+
+        #widget-container {
+            padding: 15px; box-sizing: border-box;
+            background: rgba(30, 31, 34, var(--bg-opacity));
+            display: flex; flex-direction: column; height: 100%;
+        }
+
+        header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .header-left h2 { margin: 0; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 1px; color: var(--highlight); }
+        .version-tag { font-size: 10px; opacity: 0.4; font-weight: bold; }
+
+        .main-layout { display: flex; gap: 15px; flex-grow: 1; min-height: 0; }
+        
+        /* Layout for Xeneon Edge Portrait/Vertical */
+        @media (orientation: portrait) { .main-layout { flex-direction: column; } }
+
+        .discord-view {
+            flex: 2; border-radius: 12px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1); background: #232428;
+            position: relative;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .nav-panel {
+            flex: 1.2; display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .section-label { font-size: 10px; font-weight: 800; opacity: 0.5; letter-spacing: 1px; margin-bottom: 2px; }
+
+        .channel-btn {
+            background: var(--secondary); color: #b5bac1; text-decoration: none;
+            padding: 10px 12px; border-radius: 6px; font-size: 14px;
+            display: flex; align-items: center; gap: 8px;
+            border: 1px solid transparent; transition: all 0.2s;
+        }
+        .channel-btn:hover { background: #35373c; color: white; border-color: var(--primary); }
+        .channel-btn::before { content: "#"; color: var(--primary); font-weight: bold; }
+
+        .btn-main {
+            background: var(--primary); color: white; text-decoration: none;
+            padding: 14px; border-radius: 8px; text-align: center;
+            font-weight: 700; font-size: 1rem; border: none; margin-top: auto;
+        }
+
+        .status-footer { 
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="widget-container">
+    <header>
+        <div class="header-left">
+            <h2>Discord Dashboard</h2>
+            <div id="clock" style="font-size: 12px; opacity: 0.7;">...</div>
+        </div>
+        <div class="header-right">
+            <span class="version-tag">v1.1.8.4</span>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <div class="discord-view">
+            <iframe src="https://discord.com/widget?id=245428635006271490&theme=dark" 
+                allowtransparency="true" frameborder="0" 
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
+            </iframe>
+        </div>
+
+        <div class="nav-panel">
+            <div class="section-label">QUICK CHANNELS</div>
+            
+            <a href="https://discord.com/channels/245428635006271490/CHANGEME" target="_blank" class="channel-btn">General</a>
+            <a href="https://discord.com/channels/245428635006271490/CHANGEME" target="_blank" class="channel-btn">Announcements</a>
+            <a href="https://discord.com/channels/245428635006271490/CHANGEME" target="_blank" class="channel-btn">Media-Share</a>
+            
+            <div class="section-label" style="margin-top: 10px;">SYSTEM</div>
+            <div class="status-footer">
+                <div>
+                    <div style="font-size: 9px; opacity: 0.5;">ENGINE</div>
+                    <div style="font-size: 12px; font-weight: bold; color: var(--highlight);">STABLE</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 9px; opacity: 0.5;">DEV</div>
+                    <div style="font-size: 12px; font-weight: bold;">SHROUDS</div>
+                </div>
+            </div>
+
+            <a href="https://discord.com/channels/245428635006271490" target="_blank" class="btn-main">OPEN FULL CHAT</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateClock() {
+        const now = new Date();
+        const tStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+        const dStr = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        document.getElementById('clock').innerText = `${dStr} | ${tStr}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+</script>
+
+</body>
+</html>
