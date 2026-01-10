@@ -17,22 +17,21 @@ Additonal features:
 - Sounds
 
 NHL Scoreboard
-V1.1.190
+V1.1.191
 Live NHL Scoreboard
 Additional features:
 - Click to ESPN Gamecenter
-- Themes
+- Theme Engine
 - Favorite Teams (Up to 3)
 - Alert on Score
 
 NBA Scoreboard
-V1.0.190
+V1.1.191
 Live NBA Scoreboard
 Additional features:
 - Click to ESPN Gamecenter
-- Themes
+- Theme Engine
 - Favorite Teams (Up to 3)
-- Alert on Score
 
 Discord Social Widget
 V0.1.190a
