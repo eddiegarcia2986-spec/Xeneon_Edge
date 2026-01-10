@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; background: #0f0f0f; font-family: 'Segoe UI', sans-serif; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Navigation Bar */
+        .nav { display: flex; background: #202020; padding: 8px; gap: 5px; border-bottom: 1px solid #333; }
+        .nav button { background: #333; border: none; color: #aaa; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .nav button.active { background: #e00; color: white; }
+        .nav button:hover { background: #444; color: white; }
+        
+        /* Main Viewport */
+        .viewport { flex-grow: 1; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Search Bar (Overlay) */
+        .search-bar { display: flex; padding: 8px; background: #1a1a1a; gap: 5px; }
+        input { flex-grow: 1; padding: 6px; border-radius: 4px; border: 1px solid #333; background: #111; color: white; }
+        
+        /* Quick Links Grid */
+        #home-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; height: 100%; align-content: start; }
+        .card { background: #222; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; border: 1px solid #333; }
+        .card:hover { background: #333; border-color: #e00; }
+        .card h3 { margin: 0; font-size: 14px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="nav">
+        <button onclick="showHome()" id="btnHome" class="active">Home</button>
+        <button onclick="showBrowser()" id="btnBrowse">Browse</button>
+        <button onclick="clearPlayer()" id="btnPlayer">Player</button>
+    </div>
+
+    <div class="search-bar" id="searchArea">
+        <input type="text" id="inputBox" placeholder="Search or Paste URL..." onkeydown="if(event.key==='Enter') handleInput()">
+        <button onclick="handleInput()" style="background:#e00; color:white; border:none; border-radius:4px; cursor:pointer;">Go</button>
+    </div>
+
+    <div class="viewport">
+        
+        <div id="home-grid">
+            <div class="card" onclick="playID('jfKfPfyJRdk')"><h3>☕ Lofi Girl</h3></div>
+            <div class="card" onclick="playID('5qap5aO4i9A')"><h3>🎵 Lofi Boy</h3></div>
+            <div class="card" onclick="playID('DWcJFNfaw9c')"><h3>🌧️ Rain 24/7</h3></div>
+            <div class="card" onclick="playID('4xDzrJKXOOY')"><h3>🎹 Synthwave</h3></div>
+            </div>
+
+        <iframe id="mainFrame" style="display:none;" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+
+    <script>
+        // -- Configuration --
+        // Invidious instances allow "browsing" in iframes. 
+        // If one blocks you, try: 'yewtu.be', 'vid.puffyan.us', 'invidious.flokinet.to'
+        const BROWSER_URL = "https://yewtu.be"; 
+
+        const frame = document.getElementById('mainFrame');
+        const home = document.getElementById('home-grid');
+        const input = document.getElementById('inputBox');
+
+        function showHome() {
+            home.style.display = 'grid';
+            frame.style.display = 'none';
+            setActive('btnHome');
+        }
+
+        function showBrowser() {
+            home.style.display = 'none';
+            frame.style.display = 'block';
+            frame.src = BROWSER_URL; // Load Invidious Homepage
+            setActive('btnBrowse');
+        }
+
+        function playID(id) {
+            home.style.display = 'none';
+            frame.style.display = 'block';
+            // Force the official YouTube Embed (Smoother playback than Invidious)
+            frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1`;
+            setActive('btnPlayer');
+        }
+
+        function handleInput() {
+            let val = input.value.trim();
+            if (!val) return;
+
+            // Check if it's a URL or a Search Term
+            if (val.includes('youtube.com') || val.includes('youtu.be')) {
+                // It's a link -> Extract ID and Play
+                const match = val.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+                if (match) playID(match[1]);
+            } else {
+                // It's a search term -> Search on Invidious
+                home.style.display = 'none';
+                frame.style.display = 'block';
+                frame.src = `${BROWSER_URL}/search?q=${encodeURIComponent(val)}`;
+                setActive('btnBrowse');
+            }
+        }
+
+        function setActive(btnId) {
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById(btnId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
