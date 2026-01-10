@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHL Scoreboard Pro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@400;600;700;800&family=Orbitron:wght@600;800&family=Russo+One&family=Roboto+Condensed:wght@400;700&family=Barlow:wght@600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #1a1c20;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #e0e6ed;
+            --text-sub: #94a3b8;
+            --accent: #74b9ff;
+            --highlight: #ffffff;
+            
+            /* Live Badge is always green now */
+            --live-green: #00d2be;
+            
+            --font-current: 'Fira Sans Condensed', sans-serif;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-current);
+            transition: background-color 0.5s ease, color 0.3s ease;
+        }
+
+        #widget-container {
+            display: flex; flex-direction: column;
+            height: 100%; padding: 16px;
+            max-width: 100%;
+            background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 70%);
+        }
+
+        /* --- HEADER --- */
+        header {
+            flex: 0 0 auto;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--card-border);
+            margin-bottom: 12px;
+        }
+
+        .header-left { display: flex; flex-direction: column; gap: 4px; }
+        .app-title { 
+            margin: 0; font-size: 22px; font-weight: 800; 
+            text-transform: uppercase; letter-spacing: 1px; 
+            color: var(--highlight); line-height: 1;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .date-display { font-size: 12px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        
+        .live-badge {
+            background: rgba(0, 210, 190, 0.15); 
+            color: var(--live-green); 
+            border: 1px solid var(--live-green);
+            padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; 
+            display: none; align-items: center; gap: 6px; letter-spacing: 0.5px;
+            box-shadow: 0 0 10px rgba(0, 210, 190, 0.2);
+        }
+        .live-badge.active { display: flex; }
+        .pulse-dot { width: 6px; height: 6px; background: var(--live-green); border-radius: 50%; animation: pulse 1.5s infinite; }
+
+        .settings-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); 
+            cursor: pointer; color: var(--text-sub);
+            padding: 8px; border-radius: 8px; display: flex; align-items: center;
+            transition: all 0.2s;
+        }
+        .settings-btn:hover { color: var(--highlight); background: var(--accent); border-color: var(--accent); color: #000; }
+        .settings-btn svg { width: 18px; height: 18px; }
+
+        /* --- GRID LAYOUTS --- */
+        #scoreboard {
+            flex: 1;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            grid-auto-rows: min-content; /* Prevent stretching */
+            overflow-y: auto;
+            align-content: start;
+            padding-right: 4px; /* Scrollbar space */
+        }
+        
+        /* Single Game Mode (Cinematic) */
+        #scoreboard.single-view {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+        }
+        #scoreboard.single-view .game-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 25px;
+            background: linear-gradient(180deg, var(--card-bg) 0%, rgba(0,0,0,0.2) 100%);
+            border: 2px solid var(--accent);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        #scoreboard.single-view .team-logo { width: 80px; height: 80px; }
+        #scoreboard.single-view .score { font-size: 48px; }
+        #scoreboard.single-view .team-name { font-size: 32px; }
+
+        /* Responsive Columns */
+        @media (max-width: 350px) { #scoreboard { grid-template-columns: 1fr; } } /* Very narrow Xeneon strip */
+        @media (min-width: 800px) { #scoreboard:not(.single-view) { grid-template-columns: repeat(4, 1fr); } }
+
+        /* --- GAME CARD --- */
+        .game-link { text-decoration: none; color: inherit; display: contents; }
+
+        .game-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            position: relative;
+            transition: all 0.2s ease;
+            height: auto;
+        }
+        .game-card:hover { 
+            transform: translateY(-3px); 
+            border-color: var(--accent); 
+            background: rgba(255,255,255,0.08); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); 
+        }
+        .game-card.favorite-game { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 100%); 
+            border-color: var(--accent); 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .game-status {
+            font-size: 13px; color: var(--text-sub); font-weight: 700; text-transform: uppercase;
+            text-align: right; margin-bottom: 8px; letter-spacing: 0.5px;
+        }
+        .live-status { color: var(--live-green); animation: blinkText 2s infinite; }
+
+        .team-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; }
+        .team-info { display: flex; align-items: center; gap: 12px; width: 75%; }
+        
+        .logo-wrapper {
+            position: relative;
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        /* Spotlight Effect for Visibility */
+        .logo-spotlight {
+            position: absolute; width: 80%; height: 80%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            border-radius: 50%; z-index: 0;
+        }
+
+        .team-logo { 
+            width: 100%; height: 100%; object-fit: contain; z-index: 1;
+            filter: drop-shadow(0 0 4px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(255,255,255,0.2));
+        }
+        
+        .team-name { 
+            font-weight: 800; font-size: 24px; line-height: 1; letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        .score { 
+            font-size: 32px; font-weight: 900; font-variant-numeric: tabular-nums;
+            text-align: right; color: var(--highlight);
+            text-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        /* --- FOOTER --- */
+        .footer {
+            flex: 0 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 12px; padding-top: 8px;
+            border-top: 1px solid var(--card-border);
+            font-size: 11px; color: var(--text-sub);
+        }
+
+        .nav-controls { display: flex; align-items: center; gap: 10px; }
+        .page-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-main);
+            width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        .page-btn:hover:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); }
+        .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+        /* --- MODAL --- */
+        #settings-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.9); z-index: 999;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(10px);
+        }
+        .modal-content {
+            background: #1a1a1a; border: 1px solid var(--accent); width: 360px; padding: 24px; border-radius: 16px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .modal-title { margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: var(--highlight); }
+        
+        .setting-group { margin-bottom: 15px; }
+        .setting-group label { font-size: 11px; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
+        select { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; font-family: var(--font-main); cursor: pointer; }
+        select:hover { border-color: var(--accent); }
+
+        .modal-btns { display: flex; gap: 12px; margin-top: 20px; }
+        .btn-act { flex: 1; padding: 12px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        .btn-cancel { background: transparent; border: 1px solid #555; color: #aaa; }
+        .btn-save { background: var(--accent); color: #000; box-shadow: 0 0 15px rgba(0,0,0,0.3); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes blinkText { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body onclick="AudioEngine.init()"> 
+
+<div id="widget-container">
+    <header>
+        <div class="header-left">
+            <h2 class="app-title">NHL Scoreboard</h2>
+            <div id="current-date" class="date-display">Loading...</div>
+        </div>
+        
+        <div class="header-right">
+            <div id="live-badge" class="live-badge">
+                <span class="pulse-dot"></span> <span id="live-count-text">LIVE</span>
+            </div>
+            <button class="settings-btn" onclick="toggleSettings(true)" title="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <div id="scoreboard">
+        </div>
+
+    <div class="footer">
+        <div>
+            <span>Powered by ESPN</span>
+            <span style="opacity:0.3; margin:0 6px">|</span>
+            <span style="opacity:0.5; font-family:monospace">v1.1.191</span>
+        </div>
+        <div class="nav-controls">
+            <button id="prev-btn" class="page-btn" onclick="changePage(-1)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <span id="page-indicator" style="font-weight: bold; min-width: 40px; text-align: center;">1/1</span>
+            <button id="next-btn" class="page-btn" onclick="changePage(1)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Settings</h3>
+            <button onclick="toggleSettings(false)" style="background:none; border:none; color:#fff; cursor:pointer; font-size:20px;">✕</button>
+        </div>
+        
+        <div class="setting-group">
+            <label>Interface Theme</label>
+            <select id="theme-select" onchange="applyThemePreview()"></select>
+        </div>
+
+        <div class="setting-group">
+            <label>Font Style</label>
+            <select id="font-select" onchange="applyThemePreview()">
+                <option value="'Fira Sans Condensed', sans-serif">Fira Sans (Standard)</option>
+                <option value="'Russo One', sans-serif">Russo One (Bold)</option>
+                <option value="'Orbitron', sans-serif">Orbitron (Sci-Fi)</option>
+                <option value="'Roboto Condensed', sans-serif">Roboto (Clean)</option>
+                <option value="'Barlow', sans-serif">Barlow (Modern)</option>
+            </select>
+        </div>
+
+        <div class="setting-group">
+            <label>Favorite Teams</label>
+            <select id="fav-1" class="team-opt"></select>
+            <select id="fav-2" class="team-opt" style="margin-top:5px"></select>
+            <select id="fav-3" class="team-opt" style="margin-top:5px"></select>
+        </div>
+
+        <div class="setting-group">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="only-favs-check" style="width: auto; margin:0; accent-color: var(--accent);"> 
+                <span style="color: #fff; text-transform: none;">Show Favorites Only</span>
+            </label>
+        </div>
+
+        <div class="modal-btns">
+            <button class="btn-act btn-cancel" onclick="toggleSettings(false)">Cancel</button>
+            <button class="btn-act btn-save" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CONFIG & CONSTANTS ---
+    const API = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard";
+    const GAMES_PER_PAGE = 4;
+    
+    // Team Map for Dropdowns
+    const TEAM_MAP = {
+        "ANA": "Anaheim Ducks", "UTA": "Utah HC", "BOS": "Boston Bruins", "BUF": "Buffalo Sabres", 
+        "CGY": "Calgary Flames", "CAR": "Carolina Hurricanes", "CHI": "Chicago Blackhawks", "COL": "Colorado Avalanche", 
+        "CBJ": "Columbus Blue Jackets", "DAL": "Dallas Stars", "DET": "Detroit Red Wings", "EDM": "Edmonton Oilers", 
+        "FLA": "Florida Panthers", "LA": "Los Angeles Kings", "MIN": "Minnesota Wild", "MTL": "Montreal Canadiens", 
+        "NSH": "Nashville Predators", "NJ": "New Jersey Devils", "NYI": "NY Islanders", "NYR": "NY Rangers", 
+        "OTT": "Ottawa Senators", "PHI": "Philadelphia Flyers", "PIT": "Pittsburgh Penguins", "SJ": "San Jose Sharks", 
+        "SEA": "Seattle Kraken", "STL": "St. Louis Blues", "TB": "Tampa Bay Lightning", "TOR": "Toronto Maple Leafs", 
+        "VAN": "Vancouver Canucks", "VGK": "Vegas Golden Knights", "WSH": "Washington Capitals", "WPG": "Winnipeg Jets"
+    };
+    const TEAM_KEYS = Object.keys(TEAM_MAP).sort();
+
+    // Enhanced Themes with more aggressive color overrides
+    const themes = {
+        gunmetal: { p:'#e0e6ed', s:'#94a3b8', h:'#74b9ff', b:'#1a1c20', c:'rgba(255,255,255,0.05)', cb:'rgba(255,255,255,0.1)' },
+        galaxy: { p:'#e0c3fc', s:'#9d4edd', h:'#c77dff', b:'#10002b', c:'rgba(60, 9, 108, 0.6)', cb:'#9d4edd' },
+        cloudburst: { p:'#dfe6e9', s:'#636e72', h:'#0984e3', b:'#2d3436', c:'#353b48', cb:'#74b9ff' },
+        emergency: { p:'#ffffff', s:'#ff6b6b', h:'#ff4757', b:'#1a0505', c:'rgba(255, 0, 0, 0.1)', cb:'#ff4757' },
+        hiking: { p:'#f1f2f6', s:'#747d8c', h:'#7bed9f', b:'#2f3542', c:'#57606f', cb:'#7bed9f' },
+        rainforest: { p:'#dff9fb', s:'#134e4a', h:'#55efc4', b:'#002b20', c:'#004d40', cb:'#00b894' },
+        midnight: { p:'#dff9fb', s:'#95afc0', h:'#f0932b', b:'#050314', c:'#130f40', cb:'#f0932b' },
+        dragon: { p:'#fab1a0', s:'#d63031', h:'#e17055', b:'#2d1313', c:'#631a1a', cb:'#e17055' },
+        flames: { p:'#fff', s:'#d35400', h:'#e67e22', b:'#1a0800', c:'#4a1c00', cb:'#e67e22' },
+        cyan: { p:'#eee', s:'#999', h:'#00d2be', b:'#121212', c:'#222', cb:'#00d2be' }
+    };
+
+    let state = JSON.parse(localStorage.getItem('nhl_edge_v4')) || {
+        favs: ["", "", ""],
+        onlyFavs: false,
+        theme: 'gunmetal',
+        font: "'Fira Sans Condensed', sans-serif"
+    };
+
+    let currentPage = 1;
+    let cachedGames = [];
+    let scoreCache = {};
+
+    // --- AUDIO ENGINE ---
+    const AudioEngine = {
+        ctx: null,
+        init: function() {
+            if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if(this.ctx.state === 'suspended') this.ctx.resume();
+        },
+        playGoalHorn: function() {
+            this.init();
+            const now = this.ctx.currentTime;
+            [55, 56, 54].forEach((freq, i) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                const blastLen = 1.5; const gap = 0.5;
+                for(let b=0; b<3; b++) {
+                    let start = now + (b * (blastLen + gap));
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.4, start + 0.1);
+                    gain.gain.setValueAtTime(0.4, start + blastLen - 0.2);
+                    gain.gain.linearRampToValueAtTime(0, start + blastLen);
+                }
+                osc.start(now); osc.stop(now + 7);
+            });
+        }
+    };
+
+    // --- INITIALIZATION ---
+    function init() {
+        populateOptions();
+        applyTheme(state.theme);
+        applyFont(state.font);
+        fetchData();
+        setInterval(fetchData, 30000); 
+    }
+
+    async function fetchData() {
+        try {
+            const res = await fetch(API);
+            const data = await res.json();
+            
+            if (data.day) {
+                const d = new Date(data.day.date + "T12:00:00");
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('current-date').innerText = d.toLocaleDateString('en-US', options);
+            }
+
+            let games = data.events || [];
+
+            if (state.onlyFavs) {
+                games = games.filter(g => g.competitions[0].competitors.some(c => state.favs.includes(c.team.abbreviation)));
+            }
+
+            // Sort: Live > Favs > Pre > Post
+            games.sort((a, b) => {
+                const getScore = (g) => {
+                    const isFav = g.competitions[0].competitors.some(c => state.favs.includes(c.team.abbreviation));
+                    const status = g.status.type.state;
+                    let s = 0;
+                    if (isFav) s -= 100;
+                    if (status === 'in') s -= 50;
+                    if (status === 'pre') s += 10;
+                    if (status === 'post') s += 20;
+                    return s;
+                };
+                return getScore(a) - getScore(b);
+            });
+
+            // Goal Horn Logic
+            let goalScored = false;
+            games.forEach(g => {
+                const comp = g.competitions[0];
+                comp.competitors.forEach(team => {
+                    const id = team.team.abbreviation;
+                    const score = parseInt(team.score) || 0;
+                    const isFav = state.favs.includes(id);
+                    if(isFav && scoreCache[id] !== undefined && score > scoreCache[id]) goalScored = true;
+                    scoreCache[id] = score;
+                });
+            });
+            if(goalScored) AudioEngine.playGoalHorn();
+
+            // Live Count
+            const liveCount = games.filter(g => g.status.type.state === 'in').length;
+            const badge = document.getElementById('live-badge');
+            if(liveCount > 0) {
+                badge.classList.add('active');
+                document.getElementById('live-count-text').innerText = `${liveCount} LIVE`;
+            } else {
+                badge.classList.remove('active');
+            }
+
+            cachedGames = games;
+            render();
+        } catch (e) { console.error("Fetch error", e); }
+    }
+
+    function render() {
+        const board = document.getElementById('scoreboard');
+        
+        // --- SINGLE GAME VIEW MODE ---
+        // If we only have 1 game in the list (often happens with Favorites Only filter)
+        if (cachedGames.length === 1) {
+            board.classList.add('single-view');
+            document.querySelector('.footer').style.display = 'none'; // Hide pagination footer
+        } else {
+            board.classList.remove('single-view');
+            document.querySelector('.footer').style.display = 'flex';
+        }
+
+        const totalPages = Math.ceil(cachedGames.length / GAMES_PER_PAGE) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        // If Single View, show the only game. If not, paginate.
+        const pageItems = (cachedGames.length === 1) ? cachedGames : cachedGames.slice((currentPage - 1) * GAMES_PER_PAGE, (currentPage - 1) * GAMES_PER_PAGE + GAMES_PER_PAGE);
+
+        document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
+        document.getElementById('prev-btn').disabled = currentPage === 1;
+        document.getElementById('next-btn').disabled = currentPage === totalPages;
+
+        if (pageItems.length === 0) {
+            board.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-sub); margin-top: 40px; font-style:italic">No games scheduled.</div>`;
+            return;
+        }
+
+        board.innerHTML = pageItems.map(g => {
+            const c = g.competitions[0];
+            const home = c.competitors.find(x => x.homeAway === 'home');
+            const away = c.competitors.find(x => x.homeAway === 'away');
+            const isFav = c.competitors.some(x => state.favs.includes(x.team.abbreviation));
+            const stateType = g.status.type.state; 
+            
+            let statusText = g.status.type.shortDetail;
+            let statusClass = "game-status";
+            if (stateType === 'in') statusClass += " live-status";
+            if (stateType === 'pre') statusText = new Date(g.date).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+
+            const gameLink = `https://www.espn.com/nhl/game/_/gameId/${g.id}`;
+
+            return `
+                <a href="${gameLink}" target="_blank" class="game-link">
+                    <div class="game-card ${isFav ? 'favorite-game' : ''}">
+                        <div class="${statusClass}">${statusText}</div>
+                        
+                        <div class="team-row">
+                            <div class="team-info">
+                                <div class="logo-wrapper">
+                                    <div class="logo-spotlight"></div>
+                                    <img src="https://a.espncdn.com/i/teamlogos/nhl/500/${away.team.abbreviation}.png" class="team-logo" loading="lazy" onerror="this.style.opacity=0">
+                                </div>
+                                <span class="team-name">${away.team.abbreviation}</span>
+                            </div>
+                            <span class="score">${stateType === 'pre' ? '' : away.score}</span>
+                        </div>
+
+                        <div class="team-row">
+                            <div class="team-info">
+                                <div class="logo-wrapper">
+                                    <div class="logo-spotlight"></div>
+                                    <img src="https://a.espncdn.com/i/teamlogos/nhl/500/${home.team.abbreviation}.png" class="team-logo" loading="lazy" onerror="this.style.opacity=0">
+                                </div>
+                                <span class="team-name">${home.team.abbreviation}</span>
+                            </div>
+                            <span class="score">${stateType === 'pre' ? '' : home.score}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+
+    function changePage(d) { currentPage += d; render(); }
+    
+    // --- SETTINGS ---
+    function toggleSettings(s) { document.getElementById('settings-modal').style.display = s ? 'flex' : 'none'; }
+
+    function populateOptions() {
+        // Team Dropdowns
+        const teamOpts = `<option value="">-- None --</option>` + TEAM_KEYS.map(k => `<option value="${k}">${TEAM_MAP[k]}</option>`).join('');
+        [1,2,3].forEach((n, i) => {
+            const el = document.getElementById(`fav-${n}`);
+            el.innerHTML = teamOpts;
+            el.value = state.favs[i] || "";
+        });
+        
+        // Theme Dropdown
+        const themeOpts = Object.keys(themes).map(k => `<option value="${k}" ${k===state.theme?'selected':''}>${k.charAt(0).toUpperCase() + k.slice(1)}</option>`).join('');
+        document.getElementById('theme-select').innerHTML = themeOpts;
+
+        // Font Dropdown
+        document.getElementById('font-select').value = state.font;
+        document.getElementById('only-favs-check').checked = state.onlyFavs;
+    }
+
+    function applyThemePreview() {
+        applyTheme(document.getElementById('theme-select').value);
+        applyFont(document.getElementById('font-select').value);
+    }
+
+    function applyTheme(name) {
+        const t = themes[name] || themes.gunmetal;
+        const r = document.documentElement.style;
+        r.setProperty('--bg-color', t.b);
+        r.setProperty('--text-main', t.p);
+        r.setProperty('--text-sub', t.s);
+        r.setProperty('--accent', t.h);
+        r.setProperty('--card-bg', t.c);
+        r.setProperty('--card-border', t.cb);
+        r.setProperty('--highlight', t.p); // Default highlight matches text unless specific
+    }
+
+    function applyFont(fontVal) {
+        document.documentElement.style.setProperty('--font-current', fontVal);
+    }
+
+    function saveSettings() {
+        state.favs = [1,2,3].map(n => document.getElementById(`fav-${n}`).value);
+        state.onlyFavs = document.getElementById('only-favs-check').checked;
+        state.theme = document.getElementById('theme-select').value;
+        state.font = document.getElementById('font-select').value;
+        
+        localStorage.setItem('nhl_edge_v4', JSON.stringify(state));
+        toggleSettings(false);
+        fetchData(); 
+    }
+
+    init();
+</script>
+</body>
+</html>
