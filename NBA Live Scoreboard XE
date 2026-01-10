@@ -259,7 +259,7 @@
         <div>
             <span>Powered by ESPN</span>
             <span style="opacity:0.3; margin:0 6px">|</span>
-            <span style="opacity:0.5; font-family:monospace">v1.1.191</span>
+            <span style="opacity:0.5; font-family:monospace">v1.1.190</span>
         </div>
         <div class="nav-controls">
             <button id="prev-btn" class="page-btn" onclick="changePage(-1)">
@@ -297,7 +297,7 @@
         </div>
 
         <div class="setting-group">
-            <label>Favorite Teams</label>
+            <label>Favorite Teams (Plays Buzzer on Quarter End)</label>
             <select id="fav-1" class="team-opt"></select>
             <select id="fav-2" class="team-opt" style="margin-top:5px"></select>
             <select id="fav-3" class="team-opt" style="margin-top:5px"></select>
@@ -349,7 +349,7 @@
         cyan: { p:'#eee', s:'#999', h:'#00d2be', b:'#121212', c:'#222', cb:'#00d2be' }
     };
 
-    let state = JSON.parse(localStorage.getItem('nba_v_pro_1_1_191')) || {
+    let state = JSON.parse(localStorage.getItem('nba_v_pro_1_1_190')) || {
         favs: ["", "", ""],
         onlyFavs: false,
         theme: 'gunmetal',
@@ -358,7 +358,7 @@
 
     let currentPage = 1;
     let cachedGames = [];
-    let scoreCache = {};
+    let statusCache = {}; // Stores previous status details to detect end of quarters
 
     // --- AUDIO ENGINE ---
     const AudioEngine = {
@@ -367,26 +367,28 @@
             if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             if(this.ctx.state === 'suspended') this.ctx.resume();
         },
-        playGoalHorn: function() {
+        playBuzzer: function() {
             this.init();
             const now = this.ctx.currentTime;
-            [55, 56, 54].forEach((freq, i) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.value = freq;
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                const blastLen = 1.5; const gap = 0.5;
-                for(let b=0; b<3; b++) {
-                    let start = now + (b * (blastLen + gap));
-                    gain.gain.setValueAtTime(0, start);
-                    gain.gain.linearRampToValueAtTime(0.4, start + 0.1);
-                    gain.gain.setValueAtTime(0.4, start + blastLen - 0.2);
-                    gain.gain.linearRampToValueAtTime(0, start + blastLen);
-                }
-                osc.start(now); osc.stop(now + 7);
-            });
+            
+            // Buzzer Sound: Low Square/Sawtooth Wave
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, now); // Low frequency
+            osc.frequency.linearRampToValueAtTime(100, now + 1.5); // Slight pitch drop
+            
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            
+            // Envelope
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.setValueAtTime(0.4, now + 1.2);
+            gain.gain.linearRampToValueAtTime(0, now + 1.5);
+            
+            osc.start(now);
+            osc.stop(now + 1.5);
         }
     };
 
@@ -431,19 +433,26 @@
                 return getScore(a) - getScore(b);
             });
 
-            // Horn Logic (Score Increase for Favorite)
-            let scoreInc = false;
+            // Buzzer Logic (End of Quarter/Game for Favorites)
+            let triggerBuzzer = false;
             games.forEach(g => {
                 const comp = g.competitions[0];
-                comp.competitors.forEach(team => {
-                    const id = team.team.abbreviation;
-                    const score = parseInt(team.score) || 0;
-                    const isFav = state.favs.includes(id);
-                    if(isFav && scoreCache[id] !== undefined && score > scoreCache[id]) scoreInc = true;
-                    scoreCache[id] = score;
-                });
+                const isFav = comp.competitors.some(c => state.favs.includes(c.team.abbreviation));
+                const statusDetail = g.status.type.shortDetail; // e.g. "End of 1st", "Final"
+                
+                if (isFav) {
+                    // If we have a cached status and it changed
+                    if (statusCache[g.id] && statusCache[g.id] !== statusDetail) {
+                        // Check if new status indicates a period end
+                        if (statusDetail.includes('End') || statusDetail.includes('Half') || statusDetail.includes('Final')) {
+                            triggerBuzzer = true;
+                        }
+                    }
+                    statusCache[g.id] = statusDetail;
+                }
             });
-            if(scoreInc) AudioEngine.playGoalHorn();
+            
+            if(triggerBuzzer) AudioEngine.playBuzzer();
 
             // Live Count
             const liveCount = games.filter(g => g.status.type.state === 'in').length;
@@ -464,10 +473,9 @@
         const board = document.getElementById('scoreboard');
         
         // --- SINGLE GAME VIEW MODE ---
-        // If we only have 1 game in the list (often happens with Favorites Only filter)
         if (cachedGames.length === 1) {
             board.classList.add('single-view');
-            document.querySelector('.footer').style.display = 'none'; // Hide pagination footer
+            document.querySelector('.footer').style.display = 'none'; 
         } else {
             board.classList.remove('single-view');
             document.querySelector('.footer').style.display = 'flex';
@@ -476,7 +484,6 @@
         const totalPages = Math.ceil(cachedGames.length / GAMES_PER_PAGE) || 1;
         if (currentPage > totalPages) currentPage = totalPages;
 
-        // If Single View, show the only game. If not, paginate.
         const pageItems = (cachedGames.length === 1) ? cachedGames : cachedGames.slice((currentPage - 1) * GAMES_PER_PAGE, (currentPage - 1) * GAMES_PER_PAGE + GAMES_PER_PAGE);
 
         document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
@@ -540,7 +547,6 @@
     function toggleSettings(s) { document.getElementById('settings-modal').style.display = s ? 'flex' : 'none'; }
 
     function populateOptions() {
-        // Team Dropdowns
         const teamOpts = `<option value="">-- None --</option>` + TEAM_KEYS.map(k => `<option value="${k}">${TEAM_MAP[k]}</option>`).join('');
         [1,2,3].forEach((n, i) => {
             const el = document.getElementById(`fav-${n}`);
@@ -548,11 +554,9 @@
             el.value = state.favs[i] || "";
         });
         
-        // Theme Dropdown
         const themeOpts = Object.keys(themes).map(k => `<option value="${k}" ${k===state.theme?'selected':''}>${k.charAt(0).toUpperCase() + k.slice(1)}</option>`).join('');
         document.getElementById('theme-select').innerHTML = themeOpts;
 
-        // Font Dropdown
         document.getElementById('font-select').value = state.font;
         document.getElementById('only-favs-check').checked = state.onlyFavs;
     }
@@ -584,7 +588,7 @@
         state.theme = document.getElementById('theme-select').value;
         state.font = document.getElementById('font-select').value;
         
-        localStorage.setItem('nba_v_pro_1_1_191', JSON.stringify(state));
+        localStorage.setItem('nba_v_pro_1_1_190', JSON.stringify(state));
         toggleSettings(false);
         fetchData(); 
     }
