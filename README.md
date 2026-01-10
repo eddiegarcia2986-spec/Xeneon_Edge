@@ -67,3 +67,7 @@ To make the navigation buttons jump to specific chats within your server:
     Open the widget code and find the section for buttons.
 
     Paste that link into the href attribute where it says: href="https://discord.com/channels/245428635006271490/CHANGEME"
+
+-----------------------
+
+<img width="707" height="879" alt="Screenshot 2026-01-09 195425" src="https://github.com/user-attachments/assets/1536fd9e-35f2-4f61-871c-5e092b93b1ad" />
