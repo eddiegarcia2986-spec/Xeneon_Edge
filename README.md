@@ -1,25 +1,25 @@
-Corsair Xeneon Edge Widget Suite
-Last Updated: January 8, 2026
+Corsair Xeneon Edge Widget Suite <br>
+Last Updated: January 22, 2026 <br>
 I am Shrouds, a project / product manager and marketer. I built this collection of widgets based on my personal usecases and tools I wanted to explore.
 I am not a developer, but do have basic coding knowledge that I hope to expand and improve upon. In the end, the products I build here go through a product development process in 
-developing a feature list, creating a wireframe and concept, and gathering research before using generative AI to create the code.
+developing a feature list, creating a wireframe and concept, and gathering research before using generative AI to create the code. <br>
 
 --------------------------------------------------------
 Widget List
 
-Digitimer Pro
-V1.1.191
-Digital Clock with customizability
-Additonal features:
-- Timer
-- Alarm Clock
-- Themes
-- Sounds
-
-NHL Scoreboard
-V1.1.191
-Live NHL Scoreboard
-Additional features:
+<b>Digitimer Pro </b><br>
+V1.2.1221 <br>
+A digital clock that also includes the ability to set alarms and add timers. This widget has a decent amount of customization options, including: <br>
+- Clock font
+- Date format
+- Time format
+- Alarm & Timer alert sound
+- Themes (Using an integrated alpha version of the P1C Colorways Engine)
+<br> 
+<b>NHL Scoreboard</b> <br>
+V1.1.191 <br>
+Live NHL Scoreboard <br>
+Additional features: 
 - Click to ESPN Gamecenter
 - Theme Engine
 - Favorite Teams (Up to 3)
