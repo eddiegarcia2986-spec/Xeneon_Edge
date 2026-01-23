@@ -14,16 +14,17 @@ A digital clock that also includes the ability to set alarms and add timers. Thi
 - Date format
 - Time format
 - Alarm & Timer alert sound
-- Themes (Using an integrated alpha version of the P1C Colorways Engine)
+- Themes: Fully integrated with the P1C Colorways Engine
 <br> 
 <b>NHL Scoreboard</b> <br>
-V1.1.191 <br>
+V1.3 <br>
 Live NHL Scoreboard <br>
 Additional features: 
 - Click to ESPN Gamecenter
 - Theme Engine
 - Favorite Teams (Up to 3)
 - Alert on Score
+- Themes: Fully integrated with the P1C Colorways Engine
 
 NBA Scoreboard
 V1.1.191
